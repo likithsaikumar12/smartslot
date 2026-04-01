@@ -26,6 +26,9 @@ const Turf = sequelize.define('Turf', {
   isApproved: { type: DataTypes.BOOLEAN, defaultValue: false }, // Admin approval
 }, {
   timestamps: true,
+  indexes: [
+    { fields: ['location'] }
+  ]
 });
 
 // Relationships

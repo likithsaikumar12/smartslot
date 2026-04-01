@@ -10,6 +10,7 @@ require('./models/User');
 require('./models/Turf');
 require('./models/Booking');
 require('./models/Payment');
+require('./models/PasswordReset');
 
 const authRoutes = require('./routes/authRoutes');
 const turfRoutes = require('./routes/turfRoutes');
@@ -102,3 +103,5 @@ start().catch((err) => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
+
+// Restart trigger

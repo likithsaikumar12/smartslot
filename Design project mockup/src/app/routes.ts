@@ -10,7 +10,10 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Profile } from './pages/Profile';
+import { ResetPassword } from './pages/ResetPassword';
 import { Layout } from './components/Layout';
+
+import { ForgotPassword } from './pages/ForgotPassword';
 
 const requireAuth = () => {
   const token = localStorage.getItem('token');
@@ -69,6 +72,8 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '/login', Component: Login },
+  { path: '/forgot-password', Component: ForgotPassword },
+  { path: '/reset-password', Component: ResetPassword },
   { path: '/login/owner', Component: Login },
   { path: '/admin/login', Component: Login },
   { path: '/register', Component: Register },
