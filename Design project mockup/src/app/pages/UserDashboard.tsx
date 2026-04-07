@@ -1,20 +1,18 @@
 import { Link } from 'react-router';
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, Tag, ArrowRight } from 'lucide-react';
+import { Tag, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import api from '../../api/axios';
 import { getSocket } from '../../api/socket';
 import { imageUrls } from '../data/images';
 
 export function UserDashboard() {
-  const [bookings, setBookings] = useState<any[]>([]);
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     try {
-      const [bRes, tRes] = await Promise.all([api.get('/bookings'), api.get('/turfs')]);
-      setBookings(bRes.data);
+      const tRes = await api.get('/turfs');
       const discounted = (tRes.data as any[]).filter((t) => t.discount > 0).slice(0, 6);
       setDeals(discounted);
     } catch (e) {
@@ -39,30 +37,6 @@ export function UserDashboard() {
     };
   }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-700';
-      case 'completed':
-        return 'bg-blue-100 text-blue-700';
-      case 'cancelled':
-        return 'bg-red-100 text-red-700';
-      default:
-        return 'bg-slate-100 text-slate-700';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-      case 'completed':
-        return <CheckCircle className="w-5 h-5" />;
-      case 'cancelled':
-        return <XCircle className="w-5 h-5" />;
-      default:
-        return <Clock className="w-5 h-5" />;
-    }
-  };
 
   if (loading) {
     return <div className="p-8 text-center text-slate-500">Loading your dashboard...</div>;
@@ -127,69 +101,7 @@ export function UserDashboard() {
         )}
       </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">My bookings</h2>
-          <Link to="/services" className="text-blue-600 font-medium text-sm hover:underline">
-            Book another
-          </Link>
-        </div>
-        <div className="space-y-4">
-          {bookings.map((booking, index) => (
-            <motion.div
-              key={booking.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">{booking.serviceName}</h3>
-                  <p className="text-sm text-slate-500">{booking.category}</p>
-                </div>
-                <div
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm ${getStatusColor(
-                    booking.status
-                  )}`}
-                >
-                  {getStatusIcon(booking.status)}
-                  <span className="font-medium capitalize">{booking.status}</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-6 text-sm text-slate-600">
-                <span className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {new Date(booking.date).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
-                <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  {booking.time}
-                </span>
-                <span className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  {booking.address}
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-        {bookings.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
-            <p className="text-slate-600 mb-4">You have no bookings yet.</p>
-            <Link
-              to="/services"
-              className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold"
-            >
-              Explore services
-            </Link>
-          </div>
-        )}
-      </section>
+
     </div>
   );
 }

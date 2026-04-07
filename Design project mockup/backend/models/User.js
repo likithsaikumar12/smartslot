@@ -70,6 +70,24 @@ const User = sequelize.define('User', {
     type: DataTypes.UUID,
     allowNull: true,
   },
+  // OTP based forgot password functionality (from Login)
+  forgot_otp: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  forgot_otp_expiry: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  // Token based reset password functionality (from Profile)
+  reset_token: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  reset_token_expiry: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   timestamps: true,
 });

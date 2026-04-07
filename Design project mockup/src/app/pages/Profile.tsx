@@ -30,9 +30,7 @@ export function Profile() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
 
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>(user?.verificationStatus);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>(user?.verificationStatus as VerificationStatus);
 
   useEffect(() => {
     let mounted = true;
@@ -105,21 +103,6 @@ export function Profile() {
       return;
     }
 
-    if (newPassword || confirmPassword) {
-      if (!newPassword) {
-        toast.error('New password is required');
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        toast.error('Confirm password does not match');
-        return;
-      }
-      if (!passRegex.test(newPassword)) {
-        toast.error('Password must meet the required complexity rules');
-        return;
-      }
-    }
-
     try {
       setSaving(true);
       const payload: any = {
@@ -134,16 +117,12 @@ export function Profile() {
         payload.businessType = form.businessType.trim();
       }
 
-      if (newPassword) payload.password = newPassword;
-
       const { data } = await api.put('/profile/update', payload);
       toast.success('Profile updated successfully');
-
+      
       setVerificationStatus(
         data.verificationStatus ?? (data.isVerified ? 'verified' : 'pending')
       );
-      setNewPassword('');
-      setConfirmPassword('');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to update profile');
     } finally {
@@ -240,43 +219,45 @@ export function Profile() {
               </div>
             )}
 
-            <div className="space-y-2 rounded-2xl border border-slate-100 p-4">
-              <h2 className="text-lg font-bold text-slate-900">Password Update</h2>
-              <p className="text-sm text-slate-500">
-                Leave these fields empty to keep your current password.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-semibold text-slate-700">New Password</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    placeholder="Min 8 chars + uppercase/lowercase/number/special"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-semibold text-slate-700">Confirm Password</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    placeholder="Re-enter new password"
-                  />
-                </div>
+            <div className="space-y-4 rounded-2xl border border-slate-100 p-6 bg-slate-50/50">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Security & Password</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  For your protection, password changes require email verification. Click below to initiate a secure reset token via your registered email address.
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirm('Are you sure you want to initialize a password reset? We will send a secure authorization link to your inbox.')) {
+                    try {
+                       console.log("Calling reset API with email:", user?.email);
+                       console.log("Request payload:", { email: user?.email });
+                       toast.loading('Sending reset request...', { id: 'reset' });
+                       
+                       const response = await api.post('/auth/request-password-reset', { email: user?.email });
+                       
+                       console.log("Response data:", response.data);
+                       toast.success('Reset email sent! Please check your inbox.', { id: 'reset' });
+                    } catch(error: any) {
+                       console.error("Reset Error:", error.response?.data || error.message);
+                       const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to request reset';
+                       toast.error(errorMessage, { id: 'reset' });
+                    }
+                  }
+                }}
+                className="px-6 py-2.5 rounded-xl font-bold bg-white border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+              >
+                Request Password Reset
+              </button>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => {
-                  setNewPassword('');
-                  setConfirmPassword('');
                   setForm(initialForm);
-                  setVerificationStatus(user?.verificationStatus);
+                  setVerificationStatus(user?.verificationStatus as VerificationStatus);
                 }}
                 className="px-6 py-3 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
               >

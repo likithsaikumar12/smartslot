@@ -3,7 +3,7 @@ const { Client } = require('pg');
 async function createDatabase() {
   const client = new Client({
     user: 'postgres',
-    password: 'lucky@123',
+    password: 'ram123',
     host: 'localhost',
     port: 5432,
     database: 'postgres', // Connect to default database

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { useState, useEffect, useCallback } from 'react';
-import { MapPin, Clock, Star, Tag, Filter, Search } from 'lucide-react';
+import { MapPin, Clock, Star, Tag, Filter, Search, Loader2, Navigation } from 'lucide-react';
 import { motion } from 'motion/react';
 import api from '../../api/axios';
 import { imageUrls } from '../data/images';
@@ -12,16 +12,57 @@ export function Services() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const [locationInput, setLocationInput] = useState('');
+  const [activeLocation, setActiveLocation] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
+  
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isDebouncing, setIsDebouncing] = useState(false);
+
   const fetchServices = useCallback(async () => {
     try {
-      const { data } = await api.get('/turfs');
+      const params = activeLocation ? { location: activeLocation } : {};
+      const { data } = await api.get('/turfs', { params });
       setServices(data);
     } catch (error) {
       console.error('Failed to fetch services', error);
     } finally {
       setLoading(false);
     }
+  }, [activeLocation]);
+
+  const detectLocation = useCallback(() => {
+    setIsLocating(true);
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+            const data = await res.json();
+            const city = data.address?.city || data.address?.town || data.address?.state || 'Local Area';
+            setLocationInput(city);
+            setActiveLocation(city);
+          } catch (e) {
+            console.error('Failed to reverse geocode', e);
+          } finally {
+            setIsLocating(false);
+          }
+        },
+        (error) => {
+          console.error('Geolocation error', error);
+          setIsLocating(false);
+        }
+      );
+    } else {
+      setIsLocating(false);
+    }
   }, []);
+
+  useEffect(() => {
+    detectLocation();
+  }, [detectLocation]);
 
   useEffect(() => {
     fetchServices();
@@ -32,6 +73,29 @@ export function Services() {
       s.off('turf:update', onUp);
     };
   }, [fetchServices]);
+
+  useEffect(() => {
+    if (!locationInput || locationInput.trim().length === 0) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setIsDebouncing(false);
+      return;
+    }
+
+    setIsDebouncing(true);
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/turfs/locations/search?q=${locationInput}`);
+        setSuggestions(data);
+      } catch (err) {
+        console.error('Failed to fetch suggestions', err);
+      } finally {
+        setIsDebouncing(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [locationInput]);
 
   const categories = ['All', 'Salon', 'Hospital', 'Gym', 'Turf', 'Restaurant'];
 
@@ -58,12 +122,78 @@ export function Services() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Location Banner */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-6 mb-8">
-          <div className="flex items-center gap-3">
-            <MapPin className="w-6 h-6" />
-            <div>
-              <div className="text-sm opacity-90">Your Location</div>
-              <div className="text-lg font-semibold">Bangalore, Karnataka</div>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {isLocating ? <Loader2 className="w-6 h-6 animate-spin" /> : <MapPin className="w-6 h-6" />}
+              <div>
+                <div className="text-sm opacity-90">{activeLocation ? 'Showing results near' : 'Your Location'}</div>
+                <div className="text-lg font-semibold">{activeLocation || 'All Locations'}</div>
+              </div>
             </div>
+            <form 
+              onSubmit={(e) => { e.preventDefault(); setActiveLocation(locationInput); setShowSuggestions(false); }}
+              className="flex items-center bg-white/10 rounded-xl p-1 w-full md:w-auto relative"
+            >
+              <div className="relative w-full md:w-64">
+                <input 
+                  type="text"
+                  placeholder="Enter city or area..."
+                  value={locationInput}
+                  onChange={(e) => { setLocationInput(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => { if(locationInput) setShowSuggestions(true); }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  className="bg-transparent border-none outline-none text-white placeholder-white/70 px-4 py-2 w-full"
+                />
+                
+                {showSuggestions && locationInput.trim() !== '' && (
+                  <div className="absolute top-12 left-0 w-full min-w-[250px] bg-white rounded-xl shadow-2xl overflow-hidden z-[100] border border-slate-100">
+                    {isDebouncing ? (
+                      <div className="p-4 text-center text-slate-500 text-sm flex items-center justify-center gap-2">
+                         <Loader2 className="w-4 h-4 animate-spin text-blue-500" /> Fetching...
+                      </div>
+                    ) : suggestions.length > 0 ? (
+                      <ul className="max-h-60 overflow-y-auto">
+                        {suggestions.map((sug, idx) => (
+                          <li 
+                            key={idx}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setLocationInput(sug);
+                              setActiveLocation(sug);
+                              setShowSuggestions(false);
+                            }}
+                            className="px-4 py-3 text-slate-700 hover:bg-slate-50 cursor-pointer font-medium text-[15px] transition-colors flex items-center border-b border-slate-50 last:border-0"
+                          >
+                            <MapPin className="w-4 h-4 mr-3 text-slate-400" />
+                            {sug}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="p-4 text-center text-slate-500 text-sm">
+                        No matches found.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button 
+                type="submit"
+                className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 transition-colors"
+                disabled={isLocating}
+              >
+                Search
+              </button>
+              <button
+                type="button"
+                onClick={detectLocation}
+                disabled={isLocating}
+                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors ml-1"
+                title="Use Current Location"
+              >
+                <Navigation className="w-5 h-5" />
+              </button>
+            </form>
           </div>
         </div>
 
